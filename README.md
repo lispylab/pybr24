@@ -23,4 +23,4 @@ A menos que seja observado o contrário,
 escrevi as mudanças e adições descritas nos arquivos README em cada diretório.
 
 *Luciano Ramalho*<br/>
-São Paulo, 5 de julho de 2024
+São Paulo, 16 de outubro de 2024
