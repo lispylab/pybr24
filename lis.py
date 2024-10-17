@@ -9,6 +9,7 @@
 
 import math
 import operator as op
+import time
 from collections import ChainMap
 from collections.abc import MutableMapping, Iterator
 from itertools import chain
@@ -41,6 +42,11 @@ class Procedure:
 
 ################ global environment
 
+def now():
+    """Returns local time as ['HH', 'MM', 'SS']"""
+    time_parts = list(time.localtime())[3:6]
+    return [f'{n:02d}' for n in time_parts]
+
 
 def standard_env() -> Environment:
     "An environment with some Scheme standard procedures."
@@ -64,6 +70,7 @@ def standard_env() -> Environment:
             'car': lambda x: x[0],
             'cdr': lambda x: x[1:],
             'cons': lambda x, y: [x] + y,
+            'display': lambda x: print(lispstr(x), end=''),
             'eq?': op.is_,
             'equal?': op.eq,
             'filter': lambda *args: list(filter(*args)),
@@ -73,10 +80,13 @@ def standard_env() -> Environment:
             'map': lambda *args: list(map(*args)),
             'max': max,
             'min': min,
+            'newline': lambda: print(),
             'not': op.not_,
+            'now': now,
             'null?': lambda x: x == [],
             'number?': lambda x: isinstance(x, (int, float)),
             'procedure?': callable,
+            'return': lambda: print(end='\r', flush=True),
             'round': round,
             'symbol?': lambda x: isinstance(x, Symbol),
     })
@@ -179,16 +189,17 @@ def evaluate(exp: Expression, env: Environment) -> Any:
 
 ################ non-interactive execution
 
-def run_lines(source: str) -> Iterator[Any]:
-    global_env: Environment = standard_env()
+def run_lines(source: str, global_env: Environment|None = None) -> Iterator[Any]:
+    if global_env is None:
+        global_env = standard_env()
     tokens = tokenize(source)
     while tokens:
         exp = read_from_tokens(tokens)
         yield evaluate(exp, global_env)
 
 
-def run(source: str) -> Any:
-    for result in run_lines(source):
+def run(source: str, global_env: Environment|None = None) -> Any:
+    for result in run_lines(source, global_env):
         pass
     return result
 
@@ -197,16 +208,25 @@ def run(source: str) -> Any:
 
 from IPython.core.getipython import get_ipython
 
-if get_ipython() is None:
-    register_cell_magic = lambda f: f  # no-op
-else:
-    from IPython.core.magic import register_cell_magic
 
-@register_cell_magic
+def turtle_env() -> Environment:
+    import jupyturtle
+    env: Environment = {}
+    for name in dir(jupyturtle):
+        if name.startswith('__'):
+            continue
+        env[name] = getattr(jupyturtle, name)
+    return env
+
+
 def lispy(line, cell):
     """Evaluate cell."""
-    return run(cell)
+    return run(cell, standard_env() | turtle_env())
 
+
+if get_ipython() is not None:
+    from IPython.core.magic import register_cell_magic
+    register_cell_magic(lispy)
 
 ################ main
 
