@@ -88,6 +88,7 @@ def standard_env() -> Environment:
             'procedure?': callable,
             'return': lambda: print(end='\r', flush=True),
             'round': round,
+            'sleep': time.sleep,
             'symbol?': lambda x: isinstance(x, Symbol),
     })
     return env
@@ -206,27 +207,18 @@ def run(source: str, global_env: Environment|None = None) -> Any:
 
 ################ jupyter notebook integration
 
-from IPython.core.getipython import get_ipython
+try:
+    from IPython.core.getipython import get_ipython
+except (ModuleNotFoundError, ImportError):
+    pass
+else:
+    if get_ipython() is not None:
+        from IPython.core.magic import register_cell_magic
+        def lispy(line, cell):
+            """Magic to evaluate cell."""
+            return run(cell)
+        register_cell_magic(lispy)
 
-
-def turtle_env() -> Environment:
-    import jupyturtle
-    env: Environment = {}
-    for name in dir(jupyturtle):
-        if name.startswith('__'):
-            continue
-        env[name] = getattr(jupyturtle, name)
-    return env
-
-
-def lispy(line, cell):
-    """Evaluate cell."""
-    return run(cell, standard_env() | turtle_env())
-
-
-if get_ipython() is not None:
-    from IPython.core.magic import register_cell_magic
-    register_cell_magic(lispy)
 
 ################ main
 
